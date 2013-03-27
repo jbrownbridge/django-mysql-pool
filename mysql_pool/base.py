@@ -3,6 +3,8 @@ from sqlalchemy import event
 
 from django.conf import settings
 from django.utils import importlib
+from django import VERSION as django_version
+
 from functools import partial
 
 import hashlib
@@ -100,12 +102,16 @@ class DatabaseWrapper(backend_module.DatabaseWrapper):
         if not self._is_valid_connection():
             _settings = self._serialize()
             self.connection = db_pool.connect(**_settings)
-
-            self.connection.encoders[backend_module.SafeUnicode] =\
-                    self.connection.encoders[unicode]
-            self.connection.encoders[backend_module.SafeString] =\
-                    self.connection.encoders[str]
-
+            if django_version >= (1,5):
+                self.connection.encoders[backend_module.SafeBytes] =\
+                        self.connection.encoders[bytes]
+                self.connection.encoders[backend_module.SafeText] =\
+                        self.connection.encoders[backend_module.six.text_type]
+            else:
+                self.connection.encoders[backend_module.SafeUnicode] =\
+                        self.connection.encoders[unicode]
+                self.connection.encoders[backend_module.SafeString] =\
+                        self.connection.encoders[str]
             backend_module.connection_created.send(sender=self.__class__,
                                                    connection=self)
 
